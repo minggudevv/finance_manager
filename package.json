@@ -1,0 +1,7 @@
+{
+  "name": "pencatat_keuangan",
+  "version": "1.0.2-beta",
+  "description": "Aplikasi pencatatan keuangan pribadi dengan fitur hutang piutang dan multi mata uang",
+  "author": "minggudevv",
+  "license": "MIT"
+}
