@@ -12,8 +12,7 @@ try {
     $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
     
     $stmt = $conn->prepare("
-        UPDATE debts 
-        SET status = 'lunas' 
+        DELETE FROM debts 
         WHERE id = ? AND user_id = ?
     ");
     
@@ -21,7 +20,7 @@ try {
     
     echo json_encode([
         'success' => $success,
-        'message' => $success ? 'Status berhasil diubah' : 'Gagal mengubah status'
+        'message' => $success ? 'Data berhasil dihapus' : 'Gagal menghapus data'
     ]);
 } catch(PDOException $e) {
     http_response_code(500);

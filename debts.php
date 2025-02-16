@@ -181,13 +181,49 @@ $totals = $stmt->fetch();
     <script>
     function markAsPaid(id) {
         if (confirm('Tandai sebagai lunas?')) {
-            // Implement AJAX call to mark as paid
+            fetch('src/debts/update_status.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + encodeURIComponent(id)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Gagal mengubah status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengubah status');
+            });
         }
     }
 
     function deleteDebt(id) {
         if (confirm('Yakin ingin menghapus catatan ini?')) {
-            // Implement AJAX call to delete
+            fetch('src/debts/delete.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + encodeURIComponent(id)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Gagal menghapus data');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menghapus data');
+            });
         }
     }
     </script>
