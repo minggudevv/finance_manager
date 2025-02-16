@@ -11,61 +11,87 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Secure the GET parameter
-$id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
+// Secure GET parameter and fetch transaction
+$id = filter_var($_GET['id'] ?? 0, FILTER_SANITIZE_NUMBER_INT);
 if (!$id) {
     header('Location: ../../index.php');
     exit;
 }
 
-// Mengambil data transaksi yang akan diedit
-if (isset($_GET['id'])) {
-    $stmt = $conn->prepare("
-        SELECT t.*, s.nama as storage_name, s.icon as storage_icon, s.jenis as storage_type 
-        FROM transactions t
-        JOIN storage_types s ON t.storage_type_id = s.id
-        WHERE t.id = ? AND t.user_id = ?
-    ");
-    $stmt->execute([$_GET['id'], $_SESSION['user_id']]);
-    $transaksi = $stmt->fetch();
-
-    // Ambil daftar metode penyimpanan
-    $stmt = $conn->prepare("SELECT * FROM storage_types ORDER BY jenis, nama");
-    $stmt->execute();
-    $storage_types = $stmt->fetchAll();
-
-    if (!$transaksi) {
-        header('Location: ../../index.php');
-        exit;
-    }
-}
-
+// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'])) {
         die("Invalid CSRF token");
     }
 
-    $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
-    $storage_type_id = filter_var($_POST['storage_type_id'], FILTER_SANITIZE_NUMBER_INT);
-    $kategori = cleanInput($_POST['kategori']);
-    $jumlah = filter_var($_POST['jumlah'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-    $kurs = cleanInput($_POST['kurs']);
-    $jenis = cleanInput($_POST['jenis']);
-    $tanggal = cleanInput($_POST['tanggal']);
-
     try {
+        $conn->beginTransaction();
+
+        // Clean and validate input
+        $storage_type_id = filter_var($_POST['storage_type_id'], FILTER_SANITIZE_NUMBER_INT);
+        $kategori = cleanInput($_POST['kategori']);
+        $jumlah = str_replace('.', '', $_POST['display_jumlah']); // Remove thousand separators
+        $jumlah = filter_var($jumlah, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+        $kurs = cleanInput($_POST['kurs']);
+        $jenis = cleanInput($_POST['jenis']);
+        $tanggal = cleanInput($_POST['tanggal']);
+
+        // Update transaction
         $stmt = $conn->prepare("
             UPDATE transactions 
-            SET kategori = ?, jumlah = ?, kurs = ?, jenis = ?, tanggal = ?, storage_type_id = ?
+            SET storage_type_id = ?,
+                kategori = ?,
+                jumlah = ?,
+                kurs = ?,
+                jenis = ?,
+                tanggal = ?
             WHERE id = ? AND user_id = ?
         ");
-        $stmt->execute([$kategori, $jumlah, $kurs, $jenis, $tanggal, $storage_type_id, $id, $_SESSION['user_id']]);
-        header('Location: ../../index.php?success=1');
-        exit;
+
+        $success = $stmt->execute([
+            $storage_type_id,
+            $kategori,
+            $jumlah,
+            $kurs,
+            $jenis,
+            $tanggal,
+            $id,
+            $_SESSION['user_id']
+        ]);
+
+        if ($success) {
+            $conn->commit();
+            header('Location: ../../index.php?success=edit');
+            exit;
+        } else {
+            throw new PDOException("Failed to update transaction");
+        }
     } catch(PDOException $e) {
-        $error = "Gagal mengupdate transaksi: " . $e->getMessage();
+        $conn->rollBack();
+        $error = "Error: " . $e->getMessage();
     }
 }
+
+// Fetch transaction data for display
+$stmt = $conn->prepare("
+    SELECT t.*, s.nama as storage_name 
+    FROM transactions t
+    JOIN storage_types s ON t.storage_type_id = s.id
+    WHERE t.id = ? AND t.user_id = ?
+");
+$stmt->execute([$id, $_SESSION['user_id']]);
+$transaksi = $stmt->fetch();
+
+if (!$transaksi) {
+    header('Location: ../../index.php');
+    exit;
+}
+
+// Get storage types for dropdown
+$stmt = $conn->prepare("SELECT * FROM storage_types ORDER BY jenis, nama");
+$stmt->execute();
+$storage_types = $stmt->fetchAll();
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -165,21 +191,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     <script>
-    // Validasi form sebelum submit
-    document.querySelector('form').addEventListener('submit', function(e) {
+function formatNumber(input) {
+    // Remove all dots first
+    let value = input.value.replace(/\./g, '');
+    
+    // Convert to number and format
+    if (value !== '') {
+        const number = parseInt(value);
+        if (!isNaN(number)) {
+            input.value = number.toLocaleString('id-ID');
+            
+            // Update hidden input
+            const realInput = document.getElementById('real_display_jumlah');
+            if (realInput) {
+                realInput.value = number;
+            }
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
         const displayJumlah = document.querySelector('input[name="display_jumlah"]');
-        const realJumlah = document.getElementById('real_jumlah');
+        const realJumlah = document.getElementById('real_display_jumlah');
         
-        // Jika field kosong
         if (!displayJumlah.value) {
             e.preventDefault();
             alert('Jumlah harus diisi!');
             return;
         }
         
-        // Set nilai yang akan dikirim ke server
+        // Remove thousand separators before submitting
         realJumlah.value = displayJumlah.value.replace(/\./g, '');
     });
-    </script>
+});
+</script>
 </body>
 </html>

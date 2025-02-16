@@ -301,6 +301,14 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                         </div>
                     </div>
                     <div id="transactions-content" class="p-6">
+                        <?php if (isset($_GET['success']) && $_GET['success'] === 'edit'): ?>
+                            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
+                                <div class="flex">
+                                    <i class="fas fa-check-circle mt-1 mr-2"></i>
+                                    Transaksi berhasil diupdate!
+                                </div>
+                            </div>
+                        <?php endif; ?>
                         <?php if (count($transactions) > 0): ?>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
