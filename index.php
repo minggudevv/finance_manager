@@ -204,7 +204,7 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                         </div>
                     </div>
                     <div id="graph-content" class="p-6">
-                        <?php if ($totals['total_pemasukan'] > 0 || $totals['total_pengeluaran'] > 0): ?>
+                        <?php if ($totals['total_pemasukan'] > 0 || $totals['total_pengeluaran'] > 0 || $debt_totals['total_hutang'] > 0 || $debt_totals['total_piutang'] > 0): ?>
                             <div class="mb-4 flex justify-between items-center">
                                 <div class="flex space-x-4">
                                     <select id="chartPeriod" onchange="changePeriod(this.value)" 
@@ -377,12 +377,12 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
     // Add CSRF token to all AJAX requests
     const csrfToken = '<?php echo generateCSRFToken(); ?>';
     
-    // Store chart data globally
+    // Store chart data globally with proper initialization
     const chartData = {
-        pemasukan: <?php echo $totals['total_pemasukan']; ?>,
-        pengeluaran: <?php echo $totals['total_pengeluaran']; ?>,
-        hutang: <?php echo $debt_totals['total_hutang']; ?>,
-        piutang: <?php echo $debt_totals['total_piutang']; ?>,
+        pemasukan: <?php echo floatval($totals['total_pemasukan']); ?>,
+        pengeluaran: <?php echo floatval($totals['total_pengeluaran']); ?>,
+        hutang: <?php echo floatval($debt_totals['total_hutang']); ?>,
+        piutang: <?php echo floatval($debt_totals['total_piutang']); ?>,
         currency: '<?php echo $user['preferensi_kurs']; ?>'
     };
 
@@ -392,7 +392,7 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
     document.addEventListener('DOMContentLoaded', function() {
         // Load preferred chart type and filter
         const preferredChartType = localStorage.getItem('preferredChartType') || 'bar';
-        const preferredFilter = localStorage.getItem('preferredFilter') || 'all';
+        const preferredFilter = localStorage.getItem('preferredFilter') || 'all'; // Set default to 'all'
         
         if (document.getElementById('chartType')) {
             document.getElementById('chartType').value = preferredChartType;
@@ -416,12 +416,24 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 
     function changeChartType(type) {
         localStorage.setItem('preferredChartType', type);
-        initFinanceChart(chartData.pemasukan, chartData.pengeluaran, chartData.currency);
+        initFinanceChart(
+            chartData.pemasukan,
+            chartData.pengeluaran,
+            chartData.hutang,
+            chartData.piutang,
+            chartData.currency
+        );
     }
 
     function changePeriod(period) {
         localStorage.setItem('preferredPeriod', period);
-        initFinanceChart(chartData.pemasukan, chartData.pengeluaran, chartData.currency);
+        initFinanceChart(
+            chartData.pemasukan,
+            chartData.pengeluaran,
+            chartData.hutang,
+            chartData.piutang,
+            chartData.currency
+        );
     }
 
     function hapusTransaksi(id) {

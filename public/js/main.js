@@ -7,7 +7,7 @@ function initFinanceChart(pemasukan, pengeluaran, hutang, piutang, currency = 'I
     const chartType = document.getElementById('chartType').value || 'bar';
     const chartPeriod = document.getElementById('chartPeriod').value || 'total';
     const chartFilter = document.getElementById('chartFilter').value || 'all';
-    
+
     if (currentChart) {
         currentChart.destroy();
     }
@@ -41,17 +41,25 @@ function initFinanceChart(pemasukan, pengeluaran, hutang, piutang, currency = 'I
         }
     };
 
+    // Ensure all values are numbers and not NaN
+    pemasukan = parseFloat(pemasukan) || 0;
+    pengeluaran = parseFloat(pengeluaran) || 0;
+    hutang = parseFloat(hutang) || 0;
+    piutang = parseFloat(piutang) || 0;
+
     let datasets = [];
     let labels = [];
 
-    if (chartFilter === 'all' || chartFilter === 'transactions') {
-        labels.push('Pemasukan', 'Pengeluaran');
-        datasets.push(pemasukan || 0, pengeluaran || 0);
-    }
+    // Always show all data by default
+    labels = ['Pemasukan', 'Pengeluaran', 'Hutang', 'Piutang'];
+    datasets = [pemasukan, pengeluaran, hutang, piutang];
 
-    if (chartFilter === 'all' || chartFilter === 'debts') {
-        labels.push('Hutang', 'Piutang');
-        datasets.push(hutang || 0, piutang || 0);
+    if (chartFilter === 'transactions') {
+        labels = ['Pemasukan', 'Pengeluaran'];
+        datasets = [pemasukan, pengeluaran];
+    } else if (chartFilter === 'debts') {
+        labels = ['Hutang', 'Piutang'];
+        datasets = [hutang, piutang];
     }
 
     const chartData = {
@@ -231,6 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const preferredFilter = localStorage.getItem('preferredFilter');
         if (preferredFilter) {
             document.getElementById('chartFilter').value = preferredFilter;
+        } else {
+            document.getElementById('chartFilter').value = 'all';
         }
         
         if (chartData.pemasukan > 0 || chartData.pengeluaran > 0 || chartData.hutang > 0 || chartData.piutang > 0) {
