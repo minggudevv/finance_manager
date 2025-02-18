@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Password strength indicator with visual feedback
-- Cloudflare Turnstile captcha integration
 - Enhanced security measures for authentication
 - Interactive password validation
 - Real-time password strength checking
@@ -30,7 +29,6 @@ All notable changes to this project will be documented in this file.
 
 ### Security
 - Added password complexity requirements
-- Implemented Turnstile captcha verification
 - Enhanced CSRF protection
 - Improved input sanitization
 - Better password validation rules
