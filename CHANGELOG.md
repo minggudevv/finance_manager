@@ -1,6 +1,28 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.3-beta] - 2024-02-17
+
+### Added
+- Financial targets tracking system
+- Interactive progress bar for targets
+- Target status monitoring
+- Target summary in dashboard
+
+### Changed
+- Improved dashboard layout with target card
+- Enhanced chart visualization with target line
+- Better target tracking UI/UX
+- Reorganized dashboard components
+- Updated target management system
+
+### Fixed
+- Target calculation accuracy
+- Progress bar animations
+- Chart target line display
+- Target date range validation
+- Target status updates
+
 ## [1.0.2-beta] - 2024-02-16
 
 ### Added
