@@ -84,16 +84,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </label>
                 <div class="relative">
                     <input type="password" name="password" required id="password"
+                           onkeyup="checkPasswordStrength(this.value)"
                            class="w-full px-4 py-3 rounded border focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                     <button type="button" onclick="togglePassword()"
                             class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
+                <!-- Password strength indicator -->
+                <div class="mt-2">
+                    <div class="flex space-x-2 mb-1">
+                        <div id="strength-bar-1" class="h-1 w-1/4 bg-gray-200 rounded transition-colors duration-200"></div>
+                        <div id="strength-bar-2" class="h-1 w-1/4 bg-gray-200 rounded transition-colors duration-200"></div>
+                        <div id="strength-bar-3" class="h-1 w-1/4 bg-gray-200 rounded transition-colors duration-200"></div>
+                        <div id="strength-bar-4" class="h-1 w-1/4 bg-gray-200 rounded transition-colors duration-200"></div>
+                    </div>
+                    <p id="password-strength" class="text-xs text-gray-500">Password harus memiliki minimal 8 karakter</p>
+                </div>
             </div>
 
-            <button type="submit" 
-                    class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition duration-200">
+            <button type="submit" id="submit-btn" disabled
+                    class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition duration-200 
+                           disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fas fa-user-plus mr-2"></i>Daftar Sekarang
             </button>
         </form>
@@ -119,6 +131,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             password.type = 'password';
             icon.classList.remove('fa-eye-slash');
             icon.classList.add('fa-eye');
+        }
+    }
+
+    function checkPasswordStrength(password) {
+        const strengthBar1 = document.getElementById('strength-bar-1');
+        const strengthBar2 = document.getElementById('strength-bar-2');
+        const strengthBar3 = document.getElementById('strength-bar-3');
+        const strengthBar4 = document.getElementById('strength-bar-4');
+        const strengthText = document.getElementById('password-strength');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Reset bars
+        [strengthBar1, strengthBar2, strengthBar3, strengthBar4].forEach(bar => {
+            bar.className = 'h-1 w-1/4 bg-gray-200 rounded transition-colors duration-200';
+        });
+
+        let strength = 0;
+        let feedback = [];
+
+        // Length check
+        if (password.length >= 8) {
+            strength++;
+            strengthBar1.classList.add('bg-red-500');
+        } else {
+            feedback.push('minimal 8 karakter');
+        }
+
+        // Lowercase and uppercase check
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) {
+            strength++;
+            strengthBar2.classList.add('bg-orange-500');
+        } else {
+            feedback.push('huruf besar dan kecil');
+        }
+
+        // Number check
+        if (password.match(/[0-9]/)) {
+            strength++;
+            strengthBar3.classList.add('bg-yellow-500');
+        } else {
+            feedback.push('angka');
+        }
+
+        // Special character check
+        if (password.match(/[^a-zA-Z0-9]/)) {
+            strength++;
+            strengthBar4.classList.add('bg-green-500');
+        } else {
+            feedback.push('karakter khusus');
+        }
+
+        // Update feedback text and button state
+        if (strength === 0) {
+            strengthText.className = 'text-xs text-gray-500';
+            strengthText.textContent = 'Password sangat lemah';
+            submitBtn.disabled = true;
+        } else if (strength === 1) {
+            strengthText.className = 'text-xs text-red-500';
+            strengthText.textContent = 'Password lemah! Tambahkan: ' + feedback.join(', ');
+            submitBtn.disabled = true;
+        } else if (strength === 2) {
+            strengthText.className = 'text-xs text-orange-500';
+            strengthText.textContent = 'Password sedang! Tambahkan: ' + feedback.join(', ');
+            submitBtn.disabled = true;
+        } else if (strength === 3) {
+            strengthText.className = 'text-xs text-yellow-500';
+            strengthText.textContent = 'Password kuat! Tambahkan: ' + feedback.join(', ');
+            submitBtn.disabled = false;
+        } else {
+            strengthText.className = 'text-xs text-green-500';
+            strengthText.textContent = 'Password sangat kuat!';
+            submitBtn.disabled = false;
         }
     }
     </script>
