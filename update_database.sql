@@ -37,3 +37,41 @@ FOREIGN KEY (storage_type_id) REFERENCES storage_types(id);
 ALTER TABLE users 
 ADD COLUMN remember_token VARCHAR(64) NULL,
 ADD COLUMN token_expires DATETIME NULL;
+
+-- 7. Buat tabel financial_targets untuk menyimpan target keuangan
+CREATE TABLE financial_targets_new (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    target_type ENUM('pemasukan', 'pengeluaran', 'saldo') NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    kurs ENUM('IDR', 'USD') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    period_type ENUM('daily', 'weekly', 'monthly', 'yearly') NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE KEY unique_target (user_id, target_type, period_type, start_date, end_date)
+);
+
+-- 8. Salin data dari tabel lama ke tabel baru (jika ada)
+INSERT INTO financial_targets_new 
+SELECT id, user_id, target_type, amount, kurs, is_active, 
+       'monthly' as period_type, -- default ke monthly untuk data lama
+       CURRENT_DATE as start_date, 
+       LAST_DAY(CURRENT_DATE) as end_date,
+       created_at
+FROM financial_targets;
+
+-- 9. Drop tabel lama
+DROP TABLE financial_targets;
+
+-- 10. Rename tabel baru
+RENAME TABLE financial_targets_new TO financial_targets;
+
+-- Drop unique constraint agar bisa set multiple target
+ALTER TABLE financial_targets 
+DROP INDEX unique_target;
+
+-- Buat index baru yang lebih sesuai
+CREATE INDEX idx_financial_targets ON financial_targets (user_id, target_type, period_type);

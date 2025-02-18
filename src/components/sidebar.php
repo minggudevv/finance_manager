@@ -25,6 +25,11 @@
             <span class="menu-text">Kurs Mata Uang</span>
         </a>
         
+        <a href="targets.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
+            <i class="fas fa-bullseye menu-icon mr-3"></i>
+            <span class="menu-text">Target Keuangan</span>
+        </a>
+        
         <a href="settings.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
             <i class="fas fa-cog menu-icon mr-3"></i>
             <span class="menu-text">Pengaturan</span>

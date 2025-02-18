@@ -73,6 +73,24 @@ $stmt = $conn->prepare("
 $stmt->execute([$_SESSION['user_id']]);
 $debt_totals = $stmt->fetch();
 
+// Get active target for current month
+$stmt = $conn->prepare("
+    SELECT 
+        t.*,
+        COALESCE(SUM(tr.jumlah * CASE WHEN tr.jenis = 'pengeluaran' THEN -1 ELSE 1 END), 0) as current_balance
+    FROM financial_targets t
+    LEFT JOIN transactions tr ON tr.user_id = t.user_id 
+        AND tr.tanggal BETWEEN t.start_date AND t.end_date
+    WHERE t.user_id = ? 
+    AND t.is_active = TRUE
+    AND CURRENT_DATE BETWEEN t.start_date AND t.end_date
+    GROUP BY t.id
+    ORDER BY t.id DESC 
+    LIMIT 1
+");
+$stmt->execute([$_SESSION['user_id']]);
+$activeTarget = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // For AJAX calls
 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
     header('Content-Type: application/json');
@@ -189,6 +207,78 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- Target Card - Moved after summary cards -->
+            <?php if ($activeTarget): 
+                $progress = min(($total_uang / $activeTarget['amount']) * 100, 100);
+                $remainingAmount = max($activeTarget['amount'] - $total_uang, 0);
+                $statusColor = $progress >= 100 ? 'text-green-500' : 'text-yellow-500';
+                $progressColor = $progress >= 100 ? 'bg-green-500' : 'bg-blue-500';
+            ?>
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-bullseye mr-2 text-blue-500"></i>
+                        Target Bulan Ini
+                    </h2>
+                    <a href="targets.php" class="text-blue-500 hover:text-blue-600 text-sm">
+                        <i class="fas fa-external-link-alt mr-1"></i>
+                        Lihat Semua Target
+                    </a>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-sm text-gray-600">Target Saldo:</span>
+                            <span class="ml-2 text-lg font-semibold">
+                                <?php echo formatCurrency($activeTarget['amount'], $user['preferensi_kurs']); ?>
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-sm text-gray-600">Saldo Saat Ini:</span>
+                            <span class="ml-2 text-lg font-semibold <?php echo $total_uang >= 0 ? 'text-green-500' : 'text-red-500'; ?>">
+                                <?php echo formatCurrency($total_uang, $user['preferensi_kurs']); ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full <?php echo $progressColor; ?> transition-all duration-500"
+                                 style="width: <?php echo $progress; ?>%">
+                            </div>
+                        </div>
+                        <div class="absolute -top-1 left-0 w-full flex justify-center">
+                            <span class="px-2 py-1 text-sm font-medium <?php echo $statusColor; ?>">
+                                <?php echo number_format($progress, 1); ?>%
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <span class="text-sm text-gray-600 block mb-1">Sisa Target:</span>
+                            <span class="text-lg font-semibold <?php echo $remainingAmount > 0 ? 'text-blue-500' : 'text-green-500'; ?>">
+                                <?php echo formatCurrency($remainingAmount, $user['preferensi_kurs']); ?>
+                            </span>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <span class="text-sm text-gray-600 block mb-1">Status:</span>
+                            <span class="text-lg font-semibold <?php echo $statusColor; ?>">
+                                <?php echo $progress >= 100 ? 'Target Tercapai!' : 'Dalam Progress'; ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        Periode: <?php echo date('d M Y', strtotime($activeTarget['start_date'])); ?> - 
+                                <?php echo date('d M Y', strtotime($activeTarget['end_date'])); ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- Enhanced Section Cards -->
             <div class="space-y-6">
@@ -389,6 +479,9 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
     // Add daily transactions data
     const dailyData = <?php echo json_encode($dailyTransactions); ?>;
 
+    // Add target amount to chart data
+    const targetAmount = <?php echo $activeTarget ? $activeTarget['amount'] : 'null'; ?>;
+
     document.addEventListener('DOMContentLoaded', function() {
         // Load preferred chart type and filter
         const preferredChartType = localStorage.getItem('preferredChartType') || 'bar';
@@ -507,6 +600,112 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
             }
         }
     };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('financeChart');
+        if (!ctx) return;
+
+        const labels = <?php echo json_encode(array_map(function($data) { 
+            return date('d M', strtotime($data['tanggal']));
+        }, $dailyTransactions)); ?>;
+
+        const datasets = [
+            {
+                label: 'Pemasukan',
+                data: <?php echo json_encode(array_map(function($data) { 
+                    return floatval($data['total_pemasukan']);
+                }, $dailyTransactions)); ?>,
+                backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                borderColor: 'rgb(34, 197, 94)',
+                borderWidth: 2,
+                type: 'bar',
+                order: 3
+            },
+            {
+                label: 'Pengeluaran',
+                data: <?php echo json_encode(array_map(function($data) {
+                    return floatval($data['total_pengeluaran']);
+                }, $dailyTransactions)); ?>,
+                backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 2,
+                type: 'bar',
+                order: 2
+            },
+            {
+                label: 'Saldo',
+                data: <?php echo json_encode(array_map(function($data) {
+                    return floatval($data['total_pemasukan'] - $data['total_pengeluaran']);
+                }, $dailyTransactions)); ?>,
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 2,
+                type: 'line',
+                order: 1,
+                fill: false
+            }
+        ];
+
+        // Add target line if exists
+        <?php if ($activeTarget): ?>
+        datasets.push({
+            label: 'Target: <?php echo formatCurrency($activeTarget['amount'], $user['preferensi_kurs']); ?>',
+            data: Array(<?php echo count($dailyTransactions); ?>).fill(<?php echo floatval($activeTarget['amount']); ?>),
+            borderColor: 'rgba(234, 179, 8, 0.8)',
+            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            type: 'line',
+            order: 0,
+            tension: 0,
+            fill: false,
+            pointStyle: false
+        });
+        <?php endif; ?>
+
+        new Chart(ctx, {
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '<?php echo $user['preferensi_kurs']; ?> ' + 
+                                       new Intl.NumberFormat('id-ID').format(value);
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': <?php echo $user['preferensi_kurs']; ?> ' + 
+                                       new Intl.NumberFormat('id-ID').format(context.raw);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
     </script>
 </body>
 </html>
