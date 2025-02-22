@@ -38,6 +38,15 @@ ALTER TABLE users
 ADD COLUMN remember_token VARCHAR(64) NULL,
 ADD COLUMN token_expires DATETIME NULL;
 
+-- Add admin column to users table
+ALTER TABLE users 
+ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+
+-- Create default admin user
+INSERT INTO users (nama, email, password, is_admin) 
+VALUES ('Admin', 'admin@admin.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE);
+-- Note: password is 'admin'
+
 -- 7. Buat tabel financial_targets untuk menyimpan target keuangan
 CREATE TABLE financial_targets_new (
     id INT PRIMARY KEY AUTO_INCREMENT,

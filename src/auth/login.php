@@ -4,6 +4,10 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth_helper.php';
 require_once __DIR__ . '/../helpers/security_helper.php';
 
+// Add error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 addSecurityHeaders();
 
 // Cek remember me token
@@ -27,19 +31,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
+        // Debug information
+        error_log("Login attempt - Email: " . $email);
+        error_log("User found: " . ($user ? "Yes" : "No"));
+        if ($user) {
+            error_log("Password verification: " . (password_verify($password, $user['password']) ? "Success" : "Failed"));
+            error_log("Stored hash: " . $user['password']);
+            error_log("Input password: " . $password);
+        }
+
         if ($user && password_verify($password, $user['password'])) {
             session_regenerate_id(true); // Prevent session fixation
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['nama'] = cleanInput($user['nama']);
+            $_SESSION['is_admin'] = $user['is_admin'];
             
             if (isset($_POST['remember'])) {
                 createRememberMeToken($user['id']);
             }
             
-            header('Location: ../../index.php');
+            if ($user['is_admin']) {
+                header('Location: ../../admin.php');
+            } else {
+                header('Location: ../../index.php');
+            }
             exit;
+        } else {
+            if (!$user) {
+                $error = "Email tidak ditemukan!";
+            } else {
+                $error = "Password salah!";
+            }
         }
-        $error = "Email atau password salah!";
     }
 }
 ?>

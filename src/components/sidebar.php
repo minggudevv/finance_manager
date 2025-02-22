@@ -15,6 +15,13 @@
             <span class="menu-text">Dashboard</span>
         </a>
         
+        <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
+        <a href="admin.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700 bg-blue-600">
+            <i class="fas fa-user-shield menu-icon mr-3"></i>
+            <span class="menu-text">Admin Dashboard</span>
+        </a>
+        <?php endif; ?>
+        
         <a href="debts.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
             <i class="fas fa-hand-holding-usd menu-icon mr-3"></i>
             <span class="menu-text">Hutang & Piutang</span>
