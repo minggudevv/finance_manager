@@ -11,6 +11,10 @@ if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
 
 addSecurityHeaders();
 
+// Update user's last activity
+$stmt = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+
 // Handle user actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (!validateCSRFToken($_POST['csrf_token'])) {
@@ -49,21 +53,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// Get all users
-$stmt = $conn->prepare("
+// Get filter parameters
+$filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
+$search = isset($_GET['search']) ? cleanInput($_GET['search']) : '';
+
+// Prepare the base query
+$query = "
     SELECT 
         u.*,
         COUNT(DISTINCT t.id) as total_transactions,
-        COUNT(DISTINCT ft.id) as total_targets
+        COUNT(DISTINCT ft.id) as total_targets,
+        CASE 
+            WHEN last_activity >= NOW() - INTERVAL 30 SECOND THEN 1 
+            ELSE 0 
+        END as is_online
     FROM users u
     LEFT JOIN transactions t ON u.id = t.user_id
     LEFT JOIN financial_targets ft ON u.id = ft.user_id
     WHERE u.is_admin = FALSE
-    GROUP BY u.id
-    ORDER BY u.nama
-");
-$stmt->execute();
+";
+
+// Add search condition
+if ($search !== '') {
+    $query .= " AND (u.nama LIKE ? OR u.email LIKE ?)";
+}
+
+// Add filter condition
+if ($filter === 'online') {
+    $query .= " AND last_activity >= NOW() - INTERVAL 5 MINUTE";
+} elseif ($filter === 'offline') {
+    $query .= " AND (last_activity < NOW() - INTERVAL 5 MINUTE OR last_activity IS NULL)";
+}
+
+$query .= " GROUP BY u.id ORDER BY u.nama";
+
+// Execute query with search parameters
+$stmt = $conn->prepare($query);
+if ($search !== '') {
+    $searchParam = "%$search%";
+    $stmt->execute([$searchParam, $searchParam]);
+} else {
+    $stmt->execute();
+}
 $users = $stmt->fetchAll();
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -74,6 +107,7 @@ $users = $stmt->fetchAll();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="public/css/sidebar.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <?php include 'src/components/admin_sidebar.php'; ?>
@@ -111,11 +145,41 @@ $users = $stmt->fetchAll();
                         <i class="fas fa-users mr-2"></i>Manajemen User
                     </h2>
                 </div>
+                
+                <!-- Add search and filter controls -->
+                <div class="p-4 border-b">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        <div class="flex gap-4 items-center">
+                            <select id="statusFilter" onchange="applyFilters()" 
+                                    class="px-3 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="all" <?php echo $filter === 'all' ? 'selected' : ''; ?>>Semua User</option>
+                                <option value="online" <?php echo $filter === 'online' ? 'selected' : ''; ?>>Online</option>
+                                <option value="offline" <?php echo $filter === 'offline' ? 'selected' : ''; ?>>Offline</option>
+                            </select>
+                            <div class="relative">
+                                <input type="text" id="searchInput" 
+                                       placeholder="Cari nama atau email..."
+                                       value="<?php echo htmlspecialchars($search); ?>"
+                                       class="pl-10 pr-4 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            </div>
+                            <button onclick="applyFilters()" 
+                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                                <i class="fas fa-filter mr-2"></i>Terapkan Filter
+                            </button>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            Total: <?php echo count($users); ?> user
+                        </div>
+                    </div>
+                </div>
+
                 <div class="p-6">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead>
                                 <tr>
+                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                                     <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                     <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Transaksi</th>
@@ -123,9 +187,15 @@ $users = $stmt->fetchAll();
                                     <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
+                            <tbody class="bg-white divide-y divide-gray-200" id="usersTableBody">
                                 <?php foreach ($users as $user): ?>
-                                <tr>
+                                <tr data-user-id="<?php echo $user['id']; ?>" class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center">
+                                            <span class="status-dot w-2 h-2 rounded-full mr-2 <?php echo $user['is_online'] ? 'bg-green-500' : 'bg-gray-500'; ?>"></span>
+                                            <span class="status-text"><?php echo $user['is_online'] ? 'Online' : 'Offline'; ?></span>
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <i class="fas fa-user text-gray-400 mr-2"></i>
@@ -257,6 +327,88 @@ $users = $stmt->fetchAll();
             form.submit();
         }
     }
+
+    function applyFilters() {
+        const filter = document.getElementById('statusFilter').value;
+        const search = document.getElementById('searchInput').value;
+        window.location.href = `admin.php?filter=${filter}&search=${encodeURIComponent(search)}`;
+    }
+
+    // Add enter key handler for search input
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+
+    // Combine both status update functions into one
+    function updateStatus() {
+        return $.ajax({
+            url: 'src/api/get_online_status.php',
+            method: 'GET',
+            success: function(response) {
+                if (response.users) {
+                    response.users.forEach(user => {
+                        const row = document.querySelector(`tr[data-user-id="${user.id}"]`);
+                        if (row) {
+                            const statusDot = row.querySelector('.status-dot');
+                            const statusText = row.querySelector('.status-text');
+                            
+                            if (user.is_online) {
+                                statusDot.classList.remove('bg-gray-500');
+                                statusDot.classList.add('bg-green-500');
+                                statusText.textContent = 'Online';
+                                row.classList.add('is-online');
+                            } else {
+                                statusDot.classList.remove('bg-green-500');
+                                statusDot.classList.add('bg-gray-500');
+                                statusText.textContent = 'Offline';
+                                row.classList.remove('is-online');
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // Function to update admin's activity and then check all users' status
+    function updateActivity() {
+        $.ajax({
+            url: 'src/api/update_activity.php',
+            method: 'POST',
+            success: function() {
+                updateStatus(); // Update status immediately after updating activity
+            }
+        });
+    }
+
+    // Initialize everything when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initial updates
+        updateActivity();
+        updateStatus();
+        
+        // Set intervals for periodic updates
+        setInterval(updateActivity, 10000); // Every 10 seconds
+    });
+
+    // Add live search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchText = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#usersTableBody tr');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const email = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            
+            if (name.includes(searchText) || email.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
     </script>
 </body>
 </html>

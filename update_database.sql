@@ -42,6 +42,10 @@ ADD COLUMN token_expires DATETIME NULL;
 ALTER TABLE users 
 ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
 
+-- Add last_activity column to track online status
+ALTER TABLE users 
+ADD COLUMN last_activity TIMESTAMP NULL;
+
 -- Create default admin user
 INSERT INTO users (nama, email, password, is_admin) 
 VALUES ('Admin', 'admin@admin.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE);

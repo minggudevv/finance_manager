@@ -701,11 +701,50 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
                                        new Intl.NumberFormat('id-ID').format(context.raw);
                             }
                         }
-                    }
+                    }   
                 }
             }
         });
     });
     </script>
+    <script>
+    // Update user activity status every 30 seconds
+    function updateActivity() {
+        fetch('src/api/update_activity.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+    }
+
+    // Initial update
+    updateActivity();
+
+    // Set interval for updates - Changed from 30000 to 10000 (10 seconds)
+    setInterval(updateActivity, 10000);
+    </script>
+    <script>
+function updateActivity() {
+    return fetch('src/api/update_activity.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+}
+
+// Update status more frequently and immediately
+function startActivityUpdates() {
+    // Initial update
+    updateActivity();
+    
+    // Update every 5 seconds
+    setInterval(updateActivity, 5000);
+}
+
+// Start updates when page loads
+document.addEventListener('DOMContentLoaded', startActivityUpdates);
+</script>
 </body>
 </html>
