@@ -1,6 +1,43 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.4-beta] - 2024-02-18
+
+### Added
+- Admin Dashboard
+- Real-time user online/offline status tracking
+- Admin dashboard with user management
+- User activity monitoring
+- Live search functionality in admin panel
+- User status indicators (online/offline)
+- Admin controls for user management
+- User statistics tracking
+- Transaction count per user
+- Financial targets tracking per user
+
+### Changed
+- Improved admin interface
+- Enhanced user management system
+- Better user status tracking
+- Updated activity monitoring
+- Optimized database queries for user status
+- Improved real-time updates
+
+### Fixed
+- User status update delays
+- Admin panel refresh issues
+- User tracking accuracy
+- Activity status precision
+- Database query optimization
+- Session management improvements
+
+### Security
+- Enhanced admin authentication
+- Improved user activity tracking
+- Better session management
+- Secured admin endpoints
+- Added role-based access control
+
 ## [1.0.3-beta] - 2024-02-17
 
 ### Added
