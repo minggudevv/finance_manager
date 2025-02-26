@@ -50,6 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt->execute([$userId]);
             $success = "User berhasil dihapus!";
             break;
+
+        case 'add_user':
+            $nama = cleanInput($_POST['nama']);
+            $email = cleanInput($_POST['email']);
+            $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+            
+            try {
+                $stmt = $conn->prepare("INSERT INTO users (nama, email, password) VALUES (?, ?, ?)");
+                $stmt->execute([$nama, $email, $password]);
+                $success = "User baru berhasil ditambahkan!";
+            } catch(PDOException $e) {
+                if ($e->getCode() == 23000) {
+                    $error = "Email sudah terdaftar!";
+                } else {
+                    $error = "Terjadi kesalahan, silakan coba lagi.";
+                }
+            }
+            break;
     }
 }
 
@@ -168,6 +186,10 @@ $users = $stmt->fetchAll();
                                 <i class="fas fa-filter mr-2"></i>Terapkan Filter
                             </button>
                         </div>
+                        <button onclick="showAddUserModal()" 
+                                class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-200">
+                            <i class="fas fa-user-plus mr-2"></i>Tambah User Baru
+                        </button>
                         <div class="text-sm text-gray-600">
                             Total: <?php echo count($users); ?> user
                         </div>
@@ -292,6 +314,67 @@ $users = $stmt->fetchAll();
         </div>
     </div>
 
+    <!-- Add new modal for adding user -->
+    <div id="add-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-96">
+            <h3 class="text-lg font-semibold mb-4 flex items-center">
+                <i class="fas fa-user-plus mr-2 text-green-500"></i>
+                Tambah User Baru
+            </h3>
+            <form id="add-user-form" method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
+                <input type="hidden" name="action" value="add_user">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            <i class="fas fa-user mr-2"></i>Nama
+                        </label>
+                        <input type="text" name="nama" required
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            <i class="fas fa-envelope mr-2"></i>Email
+                        </label>
+                        <input type="email" name="email" required
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            <i class="fas fa-lock mr-2"></i>Password
+                        </label>
+                        <div class="relative">
+                            <input type="password" name="password" required id="new-user-password"
+                                   onkeyup="checkNewUserPassword(this.value)"
+                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" onclick="toggleNewUserPassword()"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <p id="password-hint" class="text-xs text-gray-500 mt-1">
+                            Gunakan kombinasi huruf, angka, dan simbol untuk password yang kuat
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideModal('add-user-modal')"
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                        <i class="fas fa-plus mr-2"></i>Tambah User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
     function showModal(modalId) {
         document.getElementById(modalId).classList.remove('hidden');
@@ -409,6 +492,51 @@ $users = $stmt->fetchAll();
             }
         });
     });
+
+    function showAddUserModal() {
+        showModal('add-user-modal');
+    }
+
+    function toggleNewUserPassword() {
+        const password = document.getElementById('new-user-password');
+        const icon = event.currentTarget.querySelector('i');
+        
+        if (password.type === 'password') {
+            password.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            password.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function checkNewUserPassword(password) {
+        const hint = document.getElementById('password-hint');
+        let strength = 0;
+        
+        // Simple password strength check (just for feedback, not validation)
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+        if (password.match(/[0-9]/)) strength++;
+        if (password.match(/[^a-zA-Z0-9]/)) strength++;
+        
+        // Update hint color based on strength
+        if (strength <= 1) {
+            hint.className = 'text-xs text-red-500 mt-1';
+            hint.textContent = 'Password lemah';
+        } else if (strength === 2) {
+            hint.className = 'text-xs text-orange-500 mt-1';
+            hint.textContent = 'Password sedang';
+        } else if (strength === 3) {
+            hint.className = 'text-xs text-yellow-500 mt-1';
+            hint.textContent = 'Password kuat';
+        } else {
+            hint.className = 'text-xs text-green-500 mt-1';
+            hint.textContent = 'Password sangat kuat';
+        }
+    }
     </script>
 </body>
 </html>

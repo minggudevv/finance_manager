@@ -1,6 +1,35 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2024-02-26
+
+### Added
+- reCAPTCHA integration (v2 and v3 support)
+- Version control system for database
+- Remember Me functionality
+- Automatic database version management
+- Database version tracking interface
+- GitHub tag integration for version control
+- Version upgrade/downgrade functionality
+- Security settings management panel
+- Admin version control panel
+
+### Changed
+- Enhanced security features
+- Improved login system with reCAPTCHA
+- Better session management
+- Upgraded database structure
+- Enhanced admin controls
+- More secure authentication flow
+
+### Security
+- Added reCAPTCHA protection
+- Enhanced session security
+- Improved remember me token security
+- Added version control restrictions
+- Better database upgrade handling
+- Protected version control access
+
 ## [1.0.4-beta] - 2024-02-18
 
 ### Added

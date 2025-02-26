@@ -19,6 +19,11 @@ A powerful and user-friendly financial management system built with PHP and Java
 - 🔒 Secure user authentication
 - 💳 Budget management
 - 📈 Transaction history and categorization
+- 🔒 reCAPTCHA Protection (v2/v3)
+- 🔄 Database Version Control
+- 🎛️ Advanced Security Settings
+- 📱 Remember Me Functionality
+- 🔐 Enhanced Authentication
 
 ## 🚀 Technologies Used
 
@@ -35,6 +40,7 @@ A powerful and user-friendly financial management system built with PHP and Java
 - MySQL/MariaDB
 - Web server (Apache/Nginx)
 - Modern web browser
+- reCAPTCHA API keys (for security features)
 
 ## 📥 Installation
 
@@ -103,6 +109,29 @@ To modify these settings, edit the PDO connection string and credentials in the 
 - UTF-8 encoding for proper character handling
 - Error handling for database connections
 - Exception handling for database operations
+- reCAPTCHA integration for form protection
+- Database version control system
+- Remember me token encryption
+- Enhanced session security
+- Version-controlled database updates
+
+## 🔄 Version Control
+
+The system now includes database version control:
+- Automatic version detection
+- Safe upgrade/downgrade functionality
+- GitHub tag integration
+- Version-specific database migrations
+- Admin version management interface
+
+## 📦 Latest Version
+
+Current stable version: 1.0.5-beta
+- Enhanced security features
+- reCAPTCHA protection
+- Database version control
+- Remember me functionality
+- Improved admin controls
 
 ## 🤝 Contributing
 
@@ -149,3 +178,4 @@ finance_manager/
 Made with ❤️ by [minggudevv](https://github.com/minggudevv)
 
 </div>
+````

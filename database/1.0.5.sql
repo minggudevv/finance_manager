@@ -8,22 +8,23 @@ CREATE TABLE security_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Add recaptcha version column
 ALTER TABLE security_settings 
 ADD COLUMN recaptcha_version ENUM('v2', 'v3') DEFAULT 'v3' 
 AFTER setting_key;
 
--- Insert default reCAPTCHA settings with disabled state
-INSERT INTO security_settings (setting_key, setting_value, is_enabled) VALUES
-('recaptcha_site_key', '', FALSE),
-('recaptcha_secret_key', '', FALSE);
+-- Insert default reCAPTCHA settings
+INSERT INTO security_settings (setting_key, setting_value, is_enabled, recaptcha_version) VALUES
+('recaptcha_site_key', '', FALSE, 'v3'),
+('recaptcha_secret_key', '', FALSE, 'v3');
 
--- Initial state: disabled
-UPDATE security_settings SET is_enabled = FALSE WHERE setting_key IN ('recaptcha_site_key', 'recaptcha_secret_key');
+-- Add remember me token columns to users table
+ALTER TABLE users 
+ADD COLUMN remember_token VARCHAR(64) NULL,
+ADD COLUMN token_expires DATETIME NULL;
 
--- Update default values
-UPDATE security_settings 
-SET recaptcha_version = 'v3' 
-WHERE setting_key IN ('recaptcha_site_key', 'recaptcha_secret_key');
+-- Create index for faster token lookups
+CREATE INDEX idx_remember_token ON users(remember_token);
 
 -- Update database version
 UPDATE database_version SET version = '1.0.5' WHERE id = 1;
