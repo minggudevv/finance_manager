@@ -51,6 +51,11 @@
             <span class="menu-text">Pengaturan Admin</span>
         </a>
         
+        <a href="admin_version.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
+            <i class="fas fa-code-branch menu-icon mr-3"></i>
+            <span class="menu-text">Version Control</span>
+        </a>
+
         <a href="index.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
             <i class="fas fa-chart-line menu-icon mr-3"></i>
             <span class="menu-text">Lihat Website</span>
