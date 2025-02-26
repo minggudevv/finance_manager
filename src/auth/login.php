@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth_helper.php';
 require_once __DIR__ . '/../helpers/security_helper.php';
+require_once __DIR__ . '/../helpers/recaptcha_helper.php';
 
 // Add error reporting for debugging
 error_reporting(E_ALL);
@@ -19,6 +20,20 @@ if (!isset($_SESSION['user_id']) && validateRememberMeToken()) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'])) {
         die("Invalid CSRF token");
+    }
+
+    $recaptcha = getRecaptchaSettings();
+    // Check if reCAPTCHA is enabled and verify first
+    if ($recaptcha['enabled']) {
+        $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
+        if (empty($recaptcha_response)) {
+            $error = "Mohon selesaikan verifikasi reCAPTCHA.";
+            goto render_page;
+        }
+        if (!verifyRecaptcha($recaptcha_response)) {
+            $error = "Verifikasi reCAPTCHA gagal. Silakan coba lagi.";
+            goto render_page;
+        }
     }
 
     $email = cleanInput($_POST['email']);
@@ -65,6 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+render_page:
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -74,9 +91,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login - Pencatat Keuangan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php 
+    $recaptcha = getRecaptchaSettings();
+    if ($recaptcha['enabled']): 
+        if ($recaptcha['version'] === 'v3'): ?>
+        <script src="https://www.google.com/recaptcha/api.js?render=<?php echo $recaptcha['site_key']; ?>"></script>
+        <?php else: ?>
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <?php endif;
+    endif; ?>
 </head>
-<body class="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+<body class="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
         <div class="text-center mb-8">
             <i class="fas fa-wallet text-5xl text-blue-500 mb-4"></i>
             <h1 class="text-2xl font-bold text-gray-800">Selamat Datang Kembali</h1>
@@ -92,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" class="space-y-6">
+        <form method="POST" class="space-y-6" id="login-form">
             <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
             <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2">
@@ -121,6 +147,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        class="rounded border-gray-300 text-blue-500 focus:border-blue-500 focus:ring-blue-500">
                 <label for="remember" class="ml-2 text-gray-700">Ingat saya</label>
             </div>
+
+            <?php if ($recaptcha['enabled']): ?>
+                <?php if ($recaptcha['version'] === 'v2'): ?>
+                    <div class="g-recaptcha flex justify-center mb-4" data-sitekey="<?php echo $recaptcha['site_key']; ?>"></div>
+                <?php else: ?>
+                    <input type="hidden" name="g-recaptcha-response" id="recaptchaResponse">
+                <?php endif; ?>
+            <?php endif; ?>
 
             <button type="submit" 
                     class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition duration-200">
@@ -151,6 +185,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             icon.classList.add('fa-eye');
         }
     }
+
+    <?php if ($recaptcha['enabled']): ?>
+        <?php if ($recaptcha['version'] === 'v3'): ?>
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            grecaptcha.ready(function() {
+                grecaptcha.execute('<?php echo $recaptcha['site_key']; ?>', {action: 'login'})
+                .then(function(token) {
+                    document.getElementById('recaptchaResponse').value = token;
+                    e.target.submit();
+                });
+            });
+        });
+        <?php endif; ?>
+    <?php endif; ?>
     </script>
 </body>
 </html>

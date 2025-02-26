@@ -75,7 +75,7 @@ CREATE TABLE `debts` (
   `status` enum('belum_lunas','lunas') DEFAULT 'belum_lunas',
   `keterangan` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `debts`
@@ -102,7 +102,7 @@ CREATE TABLE `financial_targets` (
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `financial_targets`
@@ -123,7 +123,7 @@ CREATE TABLE `storage_types` (
   `nama` varchar(50) NOT NULL,
   `jenis` enum('cash','bank','ewallet') NOT NULL,
   `icon` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `storage_types`
@@ -156,7 +156,7 @@ CREATE TABLE `transactions` (
   `tanggal` date NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `storage_type_id` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `transactions`
@@ -189,7 +189,7 @@ CREATE TABLE `users` (
   `language` varchar(5) DEFAULT 'id',
   `is_admin` tinyint(1) DEFAULT '0',
   `last_activity` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
@@ -233,7 +233,7 @@ CREATE TABLE `user_sessions` (
   `login_time` datetime NOT NULL,
   `last_activity` datetime NOT NULL,
   `is_active` tinyint(1) DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables

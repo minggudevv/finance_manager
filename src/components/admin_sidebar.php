@@ -41,6 +41,11 @@
             <span class="menu-text">Manajemen User</span>
         </a>
         
+        <a href="admin_security.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
+            <i class="fas fa-shield-alt menu-icon mr-3"></i>
+            <span class="menu-text">Security Settings</span>
+        </a>
+
         <a href="admin_settings.php" class="flex items-center px-6 py-3 text-gray-100 hover:bg-gray-700">
             <i class="fas fa-user-cog menu-icon mr-3"></i>
             <span class="menu-text">Pengaturan Admin</span>
