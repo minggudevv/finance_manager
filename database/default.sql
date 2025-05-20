@@ -54,7 +54,7 @@ CREATE TABLE `database_version` (
 --
 
 INSERT INTO `database_version` (`id`, `version`, `updated_at`) VALUES
-(1, '1.0.3', '2025-02-19 13:27:57');
+(1, '1.0.0', '2024-02-01 00:00:00');
 
 -- --------------------------------------------------------
 

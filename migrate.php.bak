@@ -1,0 +1,187 @@
+<?php
+require_once __DIR__ . '/src/config/database.php';
+
+class DatabaseMigrator {
+    private $conn;
+    private $currentVersion;
+    private $availableVersions;
+    private $dbName;
+
+    private function getDatabaseName() {
+        $stmt = $this->conn->query('SELECT DATABASE()');
+        return $stmt->fetchColumn();
+    }
+    private $conn;
+    private $currentVersion;
+    private $availableVersions;
+    private $dbName;
+      public function __construct($conn) {
+        $this->conn = $conn;
+        $this->dbName = getDatabaseName($conn);
+        $this->initializeVersionTable();
+        $this->currentVersion = $this->getCurrentVersion();
+        $this->availableVersions = $this->getAvailableVersions();
+        
+        echo "Database yang digunakan: {$this->dbName}\n";
+    }    private function executeSqlFile($filename) {
+        $sql = file_get_contents($filename);
+        
+        // Remove comments
+        $sql = preg_replace('/--[^\n]*/', '', $sql);
+        $sql = preg_replace('!/\*.*?\*/!s', '', $sql);
+        
+        // Split into individual statements
+        $statements = preg_split('/;\s*[\r\n]+/', $sql);
+        
+        foreach ($statements as $statement) {
+            $statement = trim($statement);
+            if (!empty($statement)) {
+                try {
+                    $this->conn->exec($statement);
+                } catch (PDOException $e) {
+                    // Ignore "table exists" and "column exists" errors
+                    if (!in_array($e->getCode(), ['42S01', '42S21'])) {
+                        throw $e;
+                    }
+                }
+            }
+        }
+    }
+
+    private function initializeVersionTable() {
+        try {
+            // First, check if we need to import the default schema
+            $stmt = $this->conn->query("SHOW TABLES");
+            $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (count($tables) == 0) {
+                echo "\nDatabase kosong, mengimport skema default...\n";
+                $this->executeSqlFile(__DIR__ . "/database/default.sql");
+                echo "Skema default berhasil diimport!\n";
+            }
+            
+            // Now create or check version table
+            $sql = "CREATE TABLE IF NOT EXISTS database_version (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                version VARCHAR(10) NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )";
+            $this->conn->exec($sql);
+            
+            // Check if we need to insert initial version
+            $stmt = $this->conn->query("SELECT COUNT(*) FROM database_version");
+            if ($stmt->fetchColumn() == 0) {
+                $this->conn->exec("INSERT INTO database_version (version) VALUES ('1.0.0')");
+            }
+        } catch (Exception $e) {
+            throw new Exception("Gagal menginisialisasi database: " . $e->getMessage());
+        }
+    }
+    
+    private function getCurrentVersion() {
+        $stmt = $this->conn->prepare("SELECT version FROM database_version WHERE id = 1");
+        $stmt->execute();
+        return $stmt->fetchColumn();
+    }
+    
+    private function getAvailableVersions() {
+        $versions = [];
+        $migrationDir = __DIR__ . '/database';
+        
+        if ($handle = opendir($migrationDir)) {
+            while (false !== ($file = readdir($handle))) {
+                if (preg_match('/^(\d+\.\d+\.\d+)\.sql$/', $file, $matches)) {
+                    $versions[] = $matches[1];
+                }
+            }
+            closedir($handle);
+        }
+        
+        usort($versions, 'version_compare');
+        return $versions;
+    }    private function executeMigration($version) {
+        $sqlFile = __DIR__ . "/database/{$version}.sql";
+        if (!file_exists($sqlFile)) {
+            throw new Exception("Migration file not found for version {$version}");
+        }
+        
+        $sql = file_get_contents($sqlFile);
+        
+        try {
+            // Split SQL into individual statements, preserving newlines for readability
+            $statements = preg_split('/;\s*[\r\n]+/', $sql);
+            
+            $this->conn->beginTransaction();
+            
+            // Execute each statement separately
+            foreach ($statements as $statement) {
+                $statement = trim($statement);
+                if (!empty($statement)) {
+                    try {
+                        $this->conn->exec($statement);
+                    } catch (PDOException $e) {
+                        // Ignore "table exists" and "column exists" errors
+                        if (!in_array($e->getCode(), ['42S01', '42S21'])) {
+                            throw $e;
+                        }
+                        echo "\nInfo: Skipping - " . trim(explode(":", $e->getMessage())[2]);
+                    }
+                }
+            }
+            
+            // Update database version
+            $stmt = $this->conn->prepare("UPDATE database_version SET version = ?, updated_at = NOW() WHERE id = 1");
+            $stmt->execute([$version]);
+            
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            throw $e;
+        }
+    }
+    
+    public function migrate($targetVersion = null) {
+        if ($targetVersion === null) {
+            // If no target version specified, use latest available
+            $targetVersion = end($this->availableVersions);
+        }
+        
+        if (version_compare($targetVersion, $this->currentVersion, '<=')) {
+            echo "Database sudah dalam versi terbaru ({$this->currentVersion})\n";
+            return;
+        }
+        
+        $pendingVersions = array_filter($this->availableVersions, function($version) {
+            return version_compare($version, $this->currentVersion, '>');
+        });
+          if (empty($pendingVersions)) {
+            echo "Tidak ada migrasi yang perlu dijalankan\n";
+            return;
+        }
+        
+        echo "\nMemulai proses migrasi database...\n";
+        foreach ($pendingVersions as $version) {
+            try {
+                echo "\nMenjalankan migrasi ke versi {$version}:\n";
+                $this->executeMigration($version);
+                echo "\n✓ Migrasi ke versi {$version} berhasil!\n";
+            } catch (Exception $e) {
+                echo "\n✗ Migrasi gagal!\nError: " . $e->getMessage() . "\n";
+                return;
+            }
+        }
+        
+        echo "\nMigrasi database selesai. Versi saat ini: " . $this->getCurrentVersion() . "\n";
+    }
+}
+
+// Run migration
+try {
+    $migrator = new DatabaseMigrator($conn);
+    $migrator->migrate();
+} catch (Exception $e) {
+    die("Error: " . $e->getMessage() . "\n");
+}
